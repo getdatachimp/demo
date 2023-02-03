@@ -1,1 +1,280 @@
 
+[demo_wf]
+
+viewport.x = 3.0
+viewport.y = 62.0
+viewport.zoom = 1.0
+
+[[demo_wf.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 0.0
+id = 'prep'
+type = 'task'
+data.name = 'prep'
+data.path = 'prep/workflow.py'
+data.source = "df = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 0.0
+
+[[demo_wf.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 300.0
+id = 'train'
+type = 'task'
+data.name = 'train'
+data.path = 'prep/workflow.py'
+data.source = "pipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 300.0
+
+[[demo_wf.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 600.0
+id = 'score'
+type = 'task'
+data.name = 'score'
+data.path = 'prep/workflow.py'
+data.source = 'model.score(X_test, y_test)'
+positionAbsolute.x = 0.0
+positionAbsolute.y = 600.0
+
+[[demo_wf.edges]]
+
+source = 'prep'
+target = 'train'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-prep-train'
+
+[[demo_wf.edges]]
+
+source = 'train'
+target = 'score'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-train-score'
+
+[demo_2_wf]
+
+edges = [
+]
+viewport.x = 0.0
+viewport.y = 0.0
+viewport.zoom = 1.0
+
+[[demo_2_wf.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 0.0
+id = 'prep'
+type = 'task'
+data.name = 'prep'
+data.path = 'prep/workflow.py'
+data.source = "df = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)"
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n%connect_info\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 0.0
+
+[wat]
+
+viewport.x = 0.0
+viewport.y = 0.0
+viewport.zoom = 1.0
+
+[[wat.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 0.0
+id = 'prep'
+type = 'task'
+data.name = 'prep'
+data.path = 'prep/workflow.py'
+data.source = "df = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)"
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 0.0
+
+[[wat.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 300.0
+id = 'train'
+type = 'task'
+data.name = 'train'
+data.path = 'prep/workflow.py'
+data.source = "pipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)"
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 300.0
+
+[[wat.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 600.0
+id = 'score'
+type = 'task'
+data.name = 'score'
+data.path = 'prep/workflow.py'
+data.source = 'model.score(X_test, y_test)'
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 600.0
+
+[[wat.edges]]
+
+source = 'prep'
+target = 'train'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-prep-train'
+
+[[wat.edges]]
+
+source = 'train'
+target = 'score'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-train-score'
+
+[yp]
+
+viewport.x = 44.41394146256263
+viewport.y = 76.98145534497661
+viewport.zoom = 0.8819024757046517
+
+[[yp.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 0.0
+id = 'prep'
+type = 'task'
+data.name = 'prep'
+data.path = 'prep/workflow.py'
+data.source = "df = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)"
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 0.0
+
+[[yp.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 300.0
+id = 'train'
+type = 'task'
+data.name = 'train'
+data.path = 'prep/workflow.py'
+data.source = "pipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)"
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 300.0
+
+[[yp.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 600.0
+id = 'score'
+type = 'task'
+data.name = 'score'
+data.path = 'prep/workflow.py'
+data.source = 'model.score(X_test, y_test)'
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 600.0
+
+[[yp.edges]]
+
+source = 'prep'
+target = 'train'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-prep-train'
+
+[[yp.edges]]
+
+source = 'train'
+target = 'score'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-train-score'
+
+[the_one]
+
+viewport.x = 83.30510896323645
+viewport.y = 131.59258362776734
+viewport.zoom = 0.6313933231715201
+
+[[the_one.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 0.0
+id = 'prep'
+type = 'task'
+data.name = 'prep'
+data.path = 'prep/workflow.py'
+data.source = "df = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)"
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 0.0
+
+[[the_one.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 300.0
+id = 'trian'
+type = 'task'
+data.name = 'trian'
+data.path = 'prep/workflow.py'
+data.source = "pipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)"
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 300.0
+
+[[the_one.nodes]]
+
+width = 200.0
+height = 265.0
+position.x = 0.0
+position.y = 600.0
+id = 'score'
+type = 'task'
+data.name = 'score'
+data.path = 'prep/workflow.py'
+data.source = 'model.score(X_test, y_test)'
+data.nbSource = "import pandas as pd\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay\ndf = pd.read_csv('borked_iris.csv')\nX = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]\ny = df['variety'].map({'Setosa': 0, 'Versicolor': 1, 'Virginica': 2})\nX_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)\npipeline = make_pipeline(\n  StandardScaler(),\n  LogisticRegression()\n)\n\nmodel = pipeline.fit(X_train, y_train)\nmodel.score(X_test, y_test)\nfrom doubtlab.ensemble import DoubtEnsemble\nfrom doubtlab.reason import ProbaReason, WrongPredictionReason\nreasons = {\n    'proba': ProbaReason(model=model),\n    'wrong_pred': WrongPredictionReason(model=model)\n}\n\n# Pass these reasons to a doubtlab instance.\ndoubt = DoubtEnsemble(**reasons)\n\n# Get the ordered indices of examples worth checking again\nindices = doubt.get_indices(X_train, y_train)\n# Get dataframe with \"reason\"-ing behind the sorting\npredicates = doubt.get_predicates(X_train, y_train)\ndf = df.join(predicates).drop(['Unnamed: 0'], axis=1)\ndf.iloc[predicates.index].head(len(indices))\nimport seaborn as sns\nsns.pairplot(data=df, hue='collector')\n# Use pandera to create simple check that features >= some values\nimport pandera as pa\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].max() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\nschema.validate(df)\ndf.loc[df['collector'] == 'Eric', 'petal_length'] /= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] /= 100\nschema.validate(df)\n# If there's time, use pandera for hypothesis testing check for something more robust\n# Setup data chimp checks\n\n#Here's what you can type into default.ipynb\nimport pandera as pa\nfrom pandera.errors import SchemaError\n\nschema = pa.DataFrameSchema({\n  'variety': pa.Column(str),\n  'petal_length': pa.Column(float, [\n    pa.Check(lambda g: g['Versicolor'].min() <= 30, groupby='variety'), \n    pa.Check(lambda g: g['Setosa'] <= 10, groupby='variety'),\n    pa.Check(lambda g: g['Virginica'] <= 40, groupby='variety')\n    ])\n})\n\ndef validate():\n  try:\n    schema.validate(df)\n    return None\n  except SchemaError as ex:\n    return ex.failure_cases\nvalidate()\ndf.loc[df['collector'] == 'Eric', 'petal_length'] *= 100\ndf.loc[df['collector'] == 'Eric', 'petal_width'] *= 100\ndf\n# Deploy pipeline to civo\n# If there's time, show cleanlab demo"
+positionAbsolute.x = 0.0
+positionAbsolute.y = 600.0
+
+[[the_one.edges]]
+
+source = 'prep'
+target = 'trian'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-prep-trian'
+
+[[the_one.edges]]
+
+source = 'trian'
+target = 'score'
+markerEnd = 'arrowclosed'
+id = 'reactflow__edge-trian-score'
