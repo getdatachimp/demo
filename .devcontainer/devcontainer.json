@@ -1,40 +1,42 @@
 {
-	"name": "Jupyter Data Science Notebooks (Community)",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
-	"overrideCommand": false,
-	
-	// Forward Jupyter port locally, mark required
-	"forwardPorts": [8888],
-	"portsAttributes": {
-		"8888": {
-			"label": "Jupyter",
-			"requireLocalPort": true,
-			"onAutoForward": "ignore"
-		}
-	},
+  "name": "Jupyter Data Science Notebooks (Community)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "overrideCommand": false,
+  "containerEnv": {
+    "CHIMP_TOKEN": "${localEnv:CHIMP_TOKEN}"
+  },
 
-	// Configure tool-specific properties.
-	"customizations": {
-		// Configure properties specific to VS Code.
-		"vscode": {
-			// Set *default* container specific settings.json values on container create.
+  // Forward Jupyter port locally, mark required
+  "forwardPorts": [8888],
+  "portsAttributes": {
+    "8888": {
+      "label": "Jupyter",
+      "requireLocalPort": true,
+      "onAutoForward": "ignore"
+    }
+  },
+
+  // Configure tool-specific properties.
+  "customizations": {
+    // Configure properties specific to VS Code.
+    "vscode": {
+      // Set *default* container specific settings.json values on container create.
+      "settings": {
 			"settings": { 
-				"python.defaultInterpreterPath": "/opt/conda/bin/python"
-			},
-			
-			// Add the IDs of extensions you want installed when the container is created.
-			"extensions": [
-				"ms-python.python",
-				"data-chimp.data-chimp"
-			]
-		}
-	},
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/conda/bin/python"
+      },
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install --user -r requirements.txt && curl -sL https://civo.com/get | sh && sudo mv /tmp/civo /usr/local/bin/civo",
+      // Add the IDs of extensions you want installed when the container is created.
+      "extensions": ["ms-python.python", "data-chimp.data-chimp"]
+    }
+  },
 
-	// Set `remoteUser` to `root` to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "jovyan"
+  // Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "pip3 install --user -r requirements.txt && curl -sL https://civo.com/get | sh && sudo mv /tmp/civo /usr/local/bin/civo && curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash",
+
+  // Set `remoteUser` to `root` to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+  "remoteUser": "jovyan"
 }
