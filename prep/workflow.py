@@ -1,10 +1,3 @@
-from data_chimp_executor import execute as dchimp
-import pandas as pd
-
-@dchimp.task
-def get_data():
-    df = pd.read_csv('https://raw.githubusercontent.com/getdatachimp/demo/main/prep/borked_iris.csv')
-    return df
 from sklearn.model_selection import train_test_split
 
 @dchimp.task
@@ -20,7 +13,10 @@ from sklearn.pipeline import make_pipeline
 def train(X_train, y_train):
     pipeline = make_pipeline(StandardScaler(), LogisticRegression())
     return pipeline.fit(X_train, y_train)
+import pandas as pd
+import pandas as pd
 
 @dchimp.task
-def score(X_test, y_test, model):
-    return model.score(X_test, y_test)
+def get_data():
+    df = pd.read_csv('https://raw.githubusercontent.com/getdatachimp/demo/main/prep/borked_iris.csv')
+    return df
