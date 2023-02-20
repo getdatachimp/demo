@@ -1,4 +1,3 @@
-from data_chimp_executor import execute as dchimp
 from sklearn.model_selection import train_test_split
 
 @dchimp.task
